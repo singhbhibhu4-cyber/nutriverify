@@ -1,0 +1,205 @@
+/**
+ * Phase 0 Security Test Specification for NutriVerify Firestore Rules.
+ * Verifies the "Dirty Dozen" adversarial payloads are rejected with PERMISSION_DENIED.
+ *
+ * Run against Firebase Emulator Suite when testing locally:
+ *   firebase emulators:exec --only firestore "npx tsx firestore.rules.test.ts"
+ */
+
+export interface SecurityTestCase {
+  id: number;
+  name: string;
+  collection: string;
+  docId: string;
+  operation: 'get' | 'list' | 'create' | 'update' | 'delete';
+  auth: { uid: string; email_verified: boolean } | null;
+  payload?: Record<string, unknown>;
+  expectedResult: 'PERMISSION_DENIED';
+}
+
+export const dirtyDozenPayloads: SecurityTestCase[] = [
+  {
+    id: 1,
+    name: 'Identity Spoofing on Order Create',
+    collection: 'orders',
+    docId: 'order_spoof_01',
+    operation: 'create',
+    auth: { uid: 'user_A', email_verified: true },
+    payload: {
+      orderNumber: 'NV-1001',
+      userId: 'user_B',
+      customerName: 'Spoofer',
+      phone: '9876543210',
+      campusHostel: 'Hostel B, Dehradun',
+      city: 'Dehradun',
+      pincode: '248001',
+      paymentMethod: 'COD',
+      referralCodeUsed: '',
+      subtotalInr: 2400,
+      discountInr: 0,
+      totalInr: 2400,
+      itemCount: 1,
+      itemsSummary: 'Avvatar Whey 1kg x1',
+      batchCodes: ['NV-AVV-2611-04'],
+      status: 'confirmed',
+    },
+    expectedResult: 'PERMISSION_DENIED',
+  },
+  {
+    id: 2,
+    name: 'Shadow Field Injection on User Profile',
+    collection: 'users',
+    docId: 'user_A',
+    operation: 'create',
+    auth: { uid: 'user_A', email_verified: true },
+    payload: {
+      uid: 'user_A',
+      displayName: 'Test Student',
+      email: 'student@dgu.ac.in',
+      campusName: 'DBS Global University',
+      hostelOrAddress: 'Block A',
+      phone: '9876543210',
+      referralCode: 'NVSTUDENT1',
+      referralCount: 0,
+      isAdmin: true,
+    },
+    expectedResult: 'PERMISSION_DENIED',
+  },
+  {
+    id: 3,
+    name: 'Unverified Email Write',
+    collection: 'batchVerifications',
+    docId: 'scan_unverified_01',
+    operation: 'create',
+    auth: { uid: 'user_A', email_verified: false },
+    payload: {
+      userId: 'user_A',
+      batchCode: 'NV-AVV-2611-04',
+      productName: 'Avvatar Whey Protein 1kg',
+      brand: 'Avvatar',
+      labName: 'Eurofins Analytical Services India',
+      nablCertId: 'TC-5436-2611',
+      claimedProteinG: 27,
+      testedProteinG: 27.6,
+      verdict: 'verified',
+    },
+    expectedResult: 'PERMISSION_DENIED',
+  },
+  {
+    id: 4,
+    name: 'Cross-User PII Read',
+    collection: 'users',
+    docId: 'user_A',
+    operation: 'get',
+    auth: { uid: 'user_B', email_verified: true },
+    expectedResult: 'PERMISSION_DENIED',
+  },
+  {
+    id: 5,
+    name: 'Blanket User Collection Listing',
+    collection: 'users',
+    docId: '',
+    operation: 'list',
+    auth: { uid: 'user_A', email_verified: true },
+    expectedResult: 'PERMISSION_DENIED',
+  },
+  {
+    id: 6,
+    name: 'Order Status Self-Escalation on Create',
+    collection: 'orders',
+    docId: 'order_escalate_01',
+    operation: 'create',
+    auth: { uid: 'user_A', email_verified: true },
+    payload: {
+      orderNumber: 'NV-1002',
+      userId: 'user_A',
+      customerName: 'Student',
+      phone: '9876543210',
+      campusHostel: 'Hostel C',
+      city: 'Dehradun',
+      pincode: '248001',
+      paymentMethod: 'COD',
+      referralCodeUsed: '',
+      subtotalInr: 2400,
+      discountInr: 0,
+      totalInr: 2400,
+      itemCount: 1,
+      itemsSummary: 'Avvatar Whey 1kg x1',
+      batchCodes: ['NV-AVV-2611-04'],
+      status: 'delivered',
+    },
+    expectedResult: 'PERMISSION_DENIED',
+  },
+  {
+    id: 7,
+    name: 'Terminal State Resurrection',
+    collection: 'orders',
+    docId: 'order_cancelled_01',
+    operation: 'update',
+    auth: { uid: 'user_A', email_verified: true },
+    payload: { status: 'confirmed' },
+    expectedResult: 'PERMISSION_DENIED',
+  },
+  {
+    id: 8,
+    name: 'Price Tampering on Order Update',
+    collection: 'orders',
+    docId: 'order_confirmed_01',
+    operation: 'update',
+    auth: { uid: 'user_A', email_verified: true },
+    payload: { totalInr: 1, status: 'cancelled' },
+    expectedResult: 'PERMISSION_DENIED',
+  },
+  {
+    id: 9,
+    name: 'Path ID Poisoning',
+    collection: 'orders',
+    docId: 'bad$id!with*symbols',
+    operation: 'create',
+    auth: { uid: 'user_A', email_verified: true },
+    payload: { orderNumber: 'NV-1003', userId: 'user_A' },
+    expectedResult: 'PERMISSION_DENIED',
+  },
+  {
+    id: 10,
+    name: 'Denial-of-Wallet Oversized String',
+    collection: 'orders',
+    docId: 'order_oversize_01',
+    operation: 'create',
+    auth: { uid: 'user_A', email_verified: true },
+    payload: {
+      orderNumber: 'NV-1004',
+      userId: 'user_A',
+      itemsSummary: 'A'.repeat(2000),
+    },
+    expectedResult: 'PERMISSION_DENIED',
+  },
+  {
+    id: 11,
+    name: 'Array Type and Size Poisoning',
+    collection: 'orders',
+    docId: 'order_array_poison_01',
+    operation: 'create',
+    auth: { uid: 'user_A', email_verified: true },
+    payload: {
+      orderNumber: 'NV-1005',
+      userId: 'user_A',
+      batchCodes: [12345, 67890],
+    },
+    expectedResult: 'PERMISSION_DENIED',
+  },
+  {
+    id: 12,
+    name: 'Client Timestamp Forgery',
+    collection: 'batchVerifications',
+    docId: 'scan_forged_time_01',
+    operation: 'create',
+    auth: { uid: 'user_A', email_verified: true },
+    payload: {
+      userId: 'user_A',
+      batchCode: 'NV-AVV-2611-04',
+      verifiedAt: '2020-01-01T00:00:00Z',
+    },
+    expectedResult: 'PERMISSION_DENIED',
+  },
+];

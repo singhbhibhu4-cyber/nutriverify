@@ -1,0 +1,367 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private student/athlete account profile including campus delivery preferences and personal referral code.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the account owner."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Customer display name."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 3,
+          "maxLength": 160,
+          "description": "Verified Google account email address."
+        },
+        "campusName": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 120,
+          "description": "University or gym hub name (e.g., DBS Global University, Dehradun)."
+        },
+        "hostelOrAddress": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 240,
+          "description": "Campus hostel, PG, or local delivery address."
+        },
+        "phone": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 20,
+          "description": "Contact phone number for same-day campus drop delivery."
+        },
+        "referralCode": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 24,
+          "pattern": "^[A-Z0-9_\\-]+$",
+          "description": "Unique student referral code for peer sharing."
+        },
+        "referralCount": {
+          "type": "integer",
+          "description": "Number of verified peer referrals credited."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when account profile was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of latest profile update."
+        }
+      },
+      "required": [
+        "uid",
+        "displayName",
+        "email",
+        "campusName",
+        "hostelOrAddress",
+        "phone",
+        "referralCode",
+        "referralCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SupplementOrder": {
+      "title": "SupplementOrder",
+      "description": "Verified sports nutrition order placed by an authenticated customer for campus delivery.",
+      "type": "object",
+      "properties": {
+        "orderNumber": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 24,
+          "pattern": "^NV-[0-9]{4,8}$",
+          "description": "Human-readable order confirmation number."
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID."
+        },
+        "customerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Recipient full name."
+        },
+        "phone": {
+          "type": "string",
+          "minLength": 7,
+          "maxLength": 20,
+          "description": "Recipient mobile number for campus drop."
+        },
+        "campusHostel": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 240,
+          "description": "Campus hostel, PG, or street address."
+        },
+        "city": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80,
+          "description": "Delivery city."
+        },
+        "pincode": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 12,
+          "pattern": "^[0-9]{4,12}$",
+          "description": "Postal PIN code."
+        },
+        "paymentMethod": {
+          "type": "string",
+          "enum": ["COD", "UPI_ON_DELIVERY"],
+          "description": "Selected payment method on campus delivery."
+        },
+        "referralCodeUsed": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 24,
+          "description": "Optional student starter or ambassador referral code applied."
+        },
+        "subtotalInr": {
+          "type": "number",
+          "description": "Order subtotal in INR before discounts."
+        },
+        "discountInr": {
+          "type": "number",
+          "description": "Discount amount in INR."
+        },
+        "totalInr": {
+          "type": "number",
+          "description": "Final payable total in INR."
+        },
+        "itemCount": {
+          "type": "integer",
+          "description": "Total number of units ordered."
+        },
+        "itemsSummary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Readable line-item summary of ordered supplements."
+        },
+        "batchCodes": {
+          "type": "array",
+          "description": "Bounded list (max 10) of NABL-tested batch codes included in this order."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["confirmed", "dispatched", "delivered", "cancelled"],
+          "description": "Current fulfillment state of the order."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when order was placed."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of latest order update."
+        }
+      },
+      "required": [
+        "orderNumber",
+        "userId",
+        "customerName",
+        "phone",
+        "campusHostel",
+        "city",
+        "pincode",
+        "paymentMethod",
+        "referralCodeUsed",
+        "subtotalInr",
+        "discountInr",
+        "totalInr",
+        "itemCount",
+        "itemsSummary",
+        "batchCodes",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BatchVerification": {
+      "title": "BatchVerification",
+      "description": "Saved NABL third-party lab verification check recorded by a signed-in user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID."
+        },
+        "batchCode": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 40,
+          "pattern": "^[A-Z0-9\\-]+$",
+          "description": "Scanned or entered tub batch code."
+        },
+        "productName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140,
+          "description": "Verified product title."
+        },
+        "brand": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "Manufacturer brand name."
+        },
+        "labName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140,
+          "description": "Independent NABL-accredited laboratory name."
+        },
+        "nablCertId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 60,
+          "description": "NABL Certificate of Analysis identifier."
+        },
+        "claimedProteinG": {
+          "type": "number",
+          "description": "Label-claimed active grams per serving."
+        },
+        "testedProteinG": {
+          "type": "number",
+          "description": "Independent lab-tested active grams per serving."
+        },
+        "verdict": {
+          "type": "string",
+          "enum": ["verified", "unrecognized"],
+          "description": "Verification result verdict."
+        },
+        "verifiedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when user saved the verification."
+        }
+      },
+      "required": [
+        "userId",
+        "batchCode",
+        "productName",
+        "brand",
+        "labName",
+        "nablCertId",
+        "claimedProteinG",
+        "testedProteinG",
+        "verdict",
+        "verifiedAt"
+      ]
+    },
+    "AmbassadorApplication": {
+      "title": "AmbassadorApplication",
+      "description": "Campus fitness ambassador pilot application submitted by a Dehradun student athlete.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Applicant Firebase Auth UID."
+        },
+        "fullName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Student applicant full name."
+        },
+        "campusName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120,
+          "description": "University or college campus name."
+        },
+        "gymName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120,
+          "description": "Primary gym or campus fitness center."
+        },
+        "instagramHandle": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 60,
+          "description": "Optional Instagram or community handle."
+        },
+        "weeklyWorkouts": {
+          "type": "integer",
+          "description": "Training sessions per week."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["submitted", "approved", "rejected"],
+          "description": "Application review status."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of initial submission."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of latest update."
+        }
+      },
+      "required": [
+        "userId",
+        "fullName",
+        "campusName",
+        "gymName",
+        "instagramHandle",
+        "weeklyWorkouts",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user account profile isolated strictly to the authenticated owner."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/SupplementOrder" },
+      "description": "Customer supplement orders with strict owner read/list/create and cancel-only update transition."
+    },
+    "/batchVerifications/{verificationId}": {
+      "schema": { "$ref": "#/entities/BatchVerification" },
+      "description": "Immutable per-user log of saved NABL batch QR verification checks."
+    },
+    "/ambassadorApplications/{userId}": {
+      "schema": { "$ref": "#/entities/AmbassadorApplication" },
+      "description": "One-per-user campus ambassador pilot application keyed by Firebase Auth UID."
+    }
+  }
+}

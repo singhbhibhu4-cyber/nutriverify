@@ -1,0 +1,436 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ---------------------------------------------------------
+    // Global Hardened Primitives
+    // ---------------------------------------------------------
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ---------------------------------------------------------
+    // Entity Validation Blueprints (Synchronized with firebase-blueprint.json)
+    // ---------------------------------------------------------
+    function isValidUserProfile(data) {
+      return data.keys().hasAll([
+          'uid',
+          'displayName',
+          'email',
+          'campusName',
+          'hostelOrAddress',
+          'phone',
+          'referralCode',
+          'referralCount',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'uid',
+          'displayName',
+          'email',
+          'campusName',
+          'hostelOrAddress',
+          'phone',
+          'referralCode',
+          'referralCount',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.uid is string
+        && data.uid.size() >= 1
+        && data.uid.size() <= 128
+        && data.uid.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.uid == request.auth.uid
+        && data.displayName is string
+        && data.displayName.size() >= 1
+        && data.displayName.size() <= 100
+        && data.email is string
+        && data.email.size() >= 3
+        && data.email.size() <= 160
+        && data.campusName is string
+        && data.campusName.size() <= 120
+        && data.hostelOrAddress is string
+        && data.hostelOrAddress.size() <= 240
+        && data.phone is string
+        && data.phone.size() <= 20
+        && data.referralCode is string
+        && data.referralCode.size() >= 4
+        && data.referralCode.size() <= 24
+        && data.referralCode.matches('^[A-Z0-9_\\-]+$')
+        && data.referralCount is int
+        && data.referralCount >= 0
+        && data.referralCount <= 10000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSupplementOrder(data) {
+      return data.keys().hasAll([
+          'orderNumber',
+          'userId',
+          'customerName',
+          'phone',
+          'campusHostel',
+          'city',
+          'pincode',
+          'paymentMethod',
+          'referralCodeUsed',
+          'subtotalInr',
+          'discountInr',
+          'totalInr',
+          'itemCount',
+          'itemsSummary',
+          'batchCodes',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'orderNumber',
+          'userId',
+          'customerName',
+          'phone',
+          'campusHostel',
+          'city',
+          'pincode',
+          'paymentMethod',
+          'referralCodeUsed',
+          'subtotalInr',
+          'discountInr',
+          'totalInr',
+          'itemCount',
+          'itemsSummary',
+          'batchCodes',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.orderNumber is string
+        && data.orderNumber.size() >= 6
+        && data.orderNumber.size() <= 24
+        && data.orderNumber.matches('^NV-[0-9]{4,8}$')
+        && data.userId is string
+        && data.userId.size() >= 1
+        && data.userId.size() <= 128
+        && data.userId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.userId == request.auth.uid
+        && data.customerName is string
+        && data.customerName.size() >= 1
+        && data.customerName.size() <= 100
+        && data.phone is string
+        && data.phone.size() >= 7
+        && data.phone.size() <= 20
+        && data.campusHostel is string
+        && data.campusHostel.size() >= 3
+        && data.campusHostel.size() <= 240
+        && data.city is string
+        && data.city.size() >= 2
+        && data.city.size() <= 80
+        && data.pincode is string
+        && data.pincode.size() >= 4
+        && data.pincode.size() <= 12
+        && data.pincode.matches('^[0-9]{4,12}$')
+        && data.paymentMethod is string
+        && (data.paymentMethod == 'COD' || data.paymentMethod == 'UPI_ON_DELIVERY')
+        && data.referralCodeUsed is string
+        && data.referralCodeUsed.size() <= 24
+        && data.subtotalInr is number
+        && data.subtotalInr > 0
+        && data.subtotalInr <= 500000
+        && data.discountInr is number
+        && data.discountInr >= 0
+        && data.discountInr <= 50000
+        && data.discountInr <= data.subtotalInr
+        && data.totalInr is number
+        && data.totalInr > 0
+        && data.totalInr <= 500000
+        && data.totalInr == data.subtotalInr - data.discountInr
+        && data.itemCount is int
+        && data.itemCount >= 1
+        && data.itemCount <= 20
+        && data.itemsSummary is string
+        && data.itemsSummary.size() >= 1
+        && data.itemsSummary.size() <= 500
+        && data.batchCodes is list
+        && data.batchCodes.size() >= 1
+        && data.batchCodes.size() <= 10
+        && data.batchCodes[0] is string
+        && data.batchCodes[0].size() >= 3
+        && data.batchCodes[0].size() <= 40
+        && data.status is string
+        && (data.status == 'confirmed' || data.status == 'dispatched' || data.status == 'delivered' || data.status == 'cancelled')
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBatchVerification(data) {
+      return data.keys().hasAll([
+          'userId',
+          'batchCode',
+          'productName',
+          'brand',
+          'labName',
+          'nablCertId',
+          'claimedProteinG',
+          'testedProteinG',
+          'verdict',
+          'verifiedAt'
+        ])
+        && data.keys().hasOnly([
+          'userId',
+          'batchCode',
+          'productName',
+          'brand',
+          'labName',
+          'nablCertId',
+          'claimedProteinG',
+          'testedProteinG',
+          'verdict',
+          'verifiedAt'
+        ])
+        && data.userId is string
+        && data.userId.size() >= 1
+        && data.userId.size() <= 128
+        && data.userId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.userId == request.auth.uid
+        && data.batchCode is string
+        && data.batchCode.size() >= 3
+        && data.batchCode.size() <= 40
+        && data.batchCode.matches('^[A-Z0-9\\-]+$')
+        && data.productName is string
+        && data.productName.size() >= 1
+        && data.productName.size() <= 140
+        && data.brand is string
+        && data.brand.size() >= 1
+        && data.brand.size() <= 80
+        && data.labName is string
+        && data.labName.size() >= 1
+        && data.labName.size() <= 140
+        && data.nablCertId is string
+        && data.nablCertId.size() >= 3
+        && data.nablCertId.size() <= 60
+        && data.claimedProteinG is number
+        && data.claimedProteinG >= 0
+        && data.claimedProteinG <= 100
+        && data.testedProteinG is number
+        && data.testedProteinG >= 0
+        && data.testedProteinG <= 100
+        && data.verdict is string
+        && (data.verdict == 'verified' || data.verdict == 'unrecognized')
+        && data.verifiedAt is timestamp;
+    }
+
+    function isValidAmbassadorApplication(data) {
+      return data.keys().hasAll([
+          'userId',
+          'fullName',
+          'campusName',
+          'gymName',
+          'instagramHandle',
+          'weeklyWorkouts',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'userId',
+          'fullName',
+          'campusName',
+          'gymName',
+          'instagramHandle',
+          'weeklyWorkouts',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.userId is string
+        && data.userId.size() >= 1
+        && data.userId.size() <= 128
+        && data.userId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.userId == request.auth.uid
+        && data.fullName is string
+        && data.fullName.size() >= 1
+        && data.fullName.size() <= 100
+        && data.campusName is string
+        && data.campusName.size() >= 2
+        && data.campusName.size() <= 120
+        && data.gymName is string
+        && data.gymName.size() >= 2
+        && data.gymName.size() <= 120
+        && data.instagramHandle is string
+        && data.instagramHandle.size() <= 60
+        && data.weeklyWorkouts is int
+        && data.weeklyWorkouts >= 1
+        && data.weeklyWorkouts <= 14
+        && data.status is string
+        && (data.status == 'submitted' || data.status == 'approved' || data.status == 'rejected')
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // ---------------------------------------------------------
+    // Collection: /users/{userId} (PII strictly isolated to owner)
+    // ---------------------------------------------------------
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && isOwner(userId);
+      allow list: if false;
+
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming())
+        && incoming().email == request.auth.token.email
+        && incoming().referralCount == 0
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().email == existing().email
+        && incoming().referralCode == existing().referralCode
+        && incoming().referralCount == existing().referralCount
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName',
+          'campusName',
+          'hostelOrAddress',
+          'phone',
+          'updatedAt'
+        ]);
+
+      allow delete: if false;
+    }
+
+    // ---------------------------------------------------------
+    // Collection: /orders/{orderId}
+    // ---------------------------------------------------------
+    match /orders/{orderId} {
+      allow get: if isSignedIn()
+        && isValidId(orderId)
+        && existing().userId == request.auth.uid;
+
+      allow list: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+
+      allow create: if isVerifiedUser()
+        && isValidId(orderId)
+        && isValidSupplementOrder(incoming())
+        && incoming().status == 'confirmed'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isValidId(orderId)
+        && isValidSupplementOrder(incoming())
+        && existing().userId == request.auth.uid
+        && incoming().userId == existing().userId
+        && incoming().orderNumber == existing().orderNumber
+        && incoming().createdAt == existing().createdAt
+        && existing().status != 'delivered'
+        && existing().status != 'cancelled'
+        && (
+          // Action: Cancel confirmed order
+          existing().status == 'confirmed'
+          && incoming().status == 'cancelled'
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+        );
+
+      allow delete: if false;
+    }
+
+    // ---------------------------------------------------------
+    // Collection: /batchVerifications/{verificationId}
+    // ---------------------------------------------------------
+    match /batchVerifications/{verificationId} {
+      allow get: if isSignedIn()
+        && isValidId(verificationId)
+        && existing().userId == request.auth.uid;
+
+      allow list: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+
+      allow create: if isVerifiedUser()
+        && isValidId(verificationId)
+        && isValidBatchVerification(incoming())
+        && incoming().verifiedAt == request.time;
+
+      allow update: if false;
+
+      allow delete: if isVerifiedUser()
+        && isValidId(verificationId)
+        && existing().userId == request.auth.uid;
+    }
+
+    // ---------------------------------------------------------
+    // Collection: /ambassadorApplications/{userId}
+    // ---------------------------------------------------------
+    match /ambassadorApplications/{userId} {
+      allow get: if isSignedIn()
+        && isValidId(userId)
+        && isOwner(userId);
+
+      allow list: if false;
+
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidAmbassadorApplication(incoming())
+        && incoming().status == 'submitted'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidAmbassadorApplication(incoming())
+        && existing().userId == request.auth.uid
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().status == existing().status
+        && existing().status == 'submitted'
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'fullName',
+          'campusName',
+          'gymName',
+          'instagramHandle',
+          'weeklyWorkouts',
+          'updatedAt'
+        ]);
+
+      allow delete: if false;
+    }
+  }
+}
